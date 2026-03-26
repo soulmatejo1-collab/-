@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+<title>OPENBELL — 시초가 매매</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#0a0e1a;--bg2:#111827;--bg3:#1a2236;--bg4:#202d42;
+  --border:#2a3a55;--border2:#3a4f70;
+  --text:#e8edf5;--text2:#8fa3c0;--text3:#5a7090;
+  --green:#22c55e;--green-bg:rgba(34,197,94,0.12);
+  --red:#ef4444;--red-bg:rgba(239,68,68,0.12);
+  --blue:#3b82f6;--blue2:#1d4ed8;--blue-bg:rgba(59,130,246,0.12);
+  --yellow:#f59e0b;--yellow-bg:rgba(245,158,11,0.12);
+  --accent:#60a5fa;
+}
+html,body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Malgun Gothic',sans-serif;font-size:14px;min-height:100vh}
+/* 헤더 */
+.header{background:var(--bg2);border-bottom:1px solid var(--border);padding:14px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.logo{font-size:17px;font-weight:800;color:var(--accent);letter-spacing:-0.5px}
+.logo span{color:var(--text3);font-size:11px;font-weight:400;margin-left:6px}
+.market-dot{width:8px;height:8px;border-radius:50%;background:var(--text3);display:inline-block;margin-right:5px}
+.market-dot.ok{background:var(--green)}
+.market-dot.bad{background:var(--red)}
+.market-dot.warn{background:var(--yellow)}
+/* 탭 */
+.tabs{display:flex;background:var(--bg2);border-bottom:1px solid var(--border);position:sticky;top:49px;z-index:99}
+.tab{flex:1;padding:11px 4px;text-align:center;font-size:13px;color:var(--text3);cursor:pointer;border-bottom:2px solid transparent;font-weight:500;transition:all .2s}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:700}
+/* 패널 */
+.panel{display:none;padding:14px;max-width:640px;margin:0 auto}
+.panel.active{display:block}
+/* 섹션 카드 */
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;margin-bottom:14px;overflow:hidden}
+.card-head{padding:12px 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)}
+.card-title{font-size:13px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:7px}
+.card-body{padding:14px}
+/* 버튼 */
+.ai-btn{background:var(--blue);color:#fff;border:none;border-radius:7px;padding:8px 16px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap;transition:background .15s}
+.ai-btn:hover{background:var(--blue2)}
+.ai-btn:disabled{background:var(--border2);cursor:not-allowed;color:var(--text3)}
+.ai-btn .spinner{width:14px;height:14px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* 결과 */
+.result{font-size:13px;color:var(--text);line-height:1.8;white-space:pre-wrap;word-break:break-word}
+.placeholder{font-size:13px;color:var(--text3);line-height:1.7}
+.loading-msg{color:var(--text3);font-size:12px;display:flex;align-items:center;gap:8px;padding:8px 0}
+/* 상태 배지 */
+.badge{font-size:11px;padding:3px 9px;border-radius:20px;font-weight:700}
+.badge-green{background:var(--green-bg);color:var(--green)}
+.badge-red{background:var(--red-bg);color:var(--red)}
+.badge-blue{background:var(--blue-bg);color:var(--blue)}
+.badge-yellow{background:var(--yellow-bg);color:var(--yellow)}
+/* 상태 스탯 */
+.stats-row{display:flex;gap:10px;padding:12px 14px;border-bottom:1px solid var(--border)}
+.stat-box{flex:1;background:var(--bg3);border-radius:8px;padding:10px}
+.stat-label{font-size:10px;color:var(--text3);margin-bottom:5px}
+.stat-val{font-size:13px;font-weight:700;color:var(--text2)}
+.stat-val.ok{color:var(--green)}
+.stat-val.bad{color:var(--red)}
+/* 설정 */
+.set-row{display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--border)}
+.set-row:last-child{border-bottom:none}
+.set-label{font-size:13px;color:var(--text2)}
+.set-sub{font-size:11px;color:var(--text3);margin-top:2px}
+.set-right{display:flex;align-items:center;gap:6px}
+.set-input{background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--text);font-size:13px;width:90px;text-align:right}
+.set-input:focus{outline:none;border-color:var(--accent)}
+.set-unit{font-size:12px;color:var(--text3);min-width:20px}
+/* 토글 */
+.toggle{width:42px;height:24px;background:var(--border2);border-radius:12px;cursor:pointer;position:relative;transition:background .2s;flex-shrink:0}
+.toggle.on{background:var(--green)}
+.toggle::after{content:'';position:absolute;width:20px;height:20px;background:#fff;border-radius:50%;top:2px;left:2px;transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,0.3)}
+.toggle.on::after{left:20px}
+/* API 키 */
+.api-wrap{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px}
+.api-row{display:flex;gap:8px;margin-bottom:10px}
+.api-input{flex:1;background:var(--bg4);border:1px solid var(--border);border-radius:7px;padding:9px 12px;color:var(--text);font-size:13px}
+.api-input:focus{outline:none;border-color:var(--accent)}
+.save-key-btn{background:var(--bg4);border:1px solid var(--border2);border-radius:7px;padding:9px 14px;color:var(--accent);font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap}
+.save-key-btn:hover{border-color:var(--accent)}
+.api-note{font-size:11px;color:var(--text3);line-height:1.6}
+.ok-msg{background:var(--green-bg);border:1px solid rgba(34,197,94,0.3);border-radius:7px;padding:9px 12px;font-size:12px;color:var(--green);margin-bottom:10px}
+.warn-msg{background:var(--red-bg);border:1px solid rgba(239,68,68,0.3);border-radius:7px;padding:9px 12px;font-size:12px;color:var(--red);margin-bottom:10px}
+/* 저장 버튼 */
+.save-btn{background:var(--blue);color:#fff;border:none;border-radius:10px;padding:14px;font-size:15px;font-weight:700;cursor:pointer;width:100%;margin-top:4px}
+.save-btn:hover{background:var(--blue2)}
+/* 모바일 하단 여백 */
+.bottom-pad{height:30px}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">OPENBELL <span>시초가 매매 의사결정</span></div>
+  <div style="display:flex;align-items:center;font-size:12px;color:var(--text2)">
+    <span class="market-dot warn" id="mDot"></span>
+    <span id="mText">대기중</span>
+  </div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('domestic')">🇰🇷 국내주식</div>
+  <div class="tab" onclick="switchTab('us')">🇺🇸 미국주식</div>
+  <div class="tab" onclick="switchTab('criteria')">⚙️ 기준설정</div>
+</div>
+
+<!-- 국내주식 패널 -->
+<div id="panel-domestic" class="panel active">
+
+  <!-- 코스피 예상 -->
+  <div class="card">
+    <div class="card-head">
+      <div class="card-title"><span class="market-dot warn" id="kospiDot"></span>금일 코스피 예상</div>
+      <button class="ai-btn" id="btn-kospi" onclick="runKospi()"><span>AI 분석</span></button>
+    </div>
+    <div class="stats-row">
+      <div class="stat-box"><div class="stat-label">시장 상태</div><div class="stat-val" id="kospiStatus">—</div></div>
+      <div class="stat-box" style="flex:2"><div class="stat-label">매매 가능 여부</div><div class="stat-val" id="tradeOk">분석 전</div></div>
+    </div>
+    <div class="card-body"><div id="res-kospi" class="placeholder">AI 분석 버튼을 눌러 오늘 코스피를 예상해보세요.</div></div>
+  </div>
+
+  <!-- 주요 뉴스 -->
+  <div class="card">
+    <div class="card-head">
+      <div class="card-title">📰 주요 뉴스 (24시간)</div>
+      <button class="ai-btn" onclick="runNews('domestic')"><span>분석</span></button>
+    </div>
+    <div class="card-body"><div id="res-news-domestic" class="placeholder">국내 주요 뉴스를 분석합니다.</div></div>
+  </div>
+
+  <!-- 종목 추천 -->
+  <div class="card">
+    <div class="card-head">
+      <div class="card-title">🎯 시초가 매매 대상 추천</div>
+      <button class="ai-btn" onclick="runStocks('domestic')"><span>종목 분석</span></button>
+    </div>
+    <div class="card-body"><div id="res-stocks-domestic" class="placeholder">오늘 시초가 매매 대상 상위 5종목을 추천합니다.</div></div>
+  </div>
+
+  <!-- 추천 사유 -->
+  <div class="card">
+    <div class="card-head">
+      <div class="card-title">📋 추천 사유 정리</div>
+      <button class="ai-btn" onclick="runReason('domestic')"><span>분석</span></button>
+    </div>
+    <div class="card-body"><div id="res-reason-domestic" class="placeholder">각 추천 종목의 수급·모멘텀·기술적 분석을 정리합니다.</div></div>
+  </div>
+
+  <!-- 피드백 -->
+  <div class="card">
+    <div class="card-head">
+      <div class="card-title">📊 성공 / 실패 사유 정리 <span class="badge badge-yellow" style="margin-left:4px">전일 결과</span></div>
+      <button class="ai-btn" onclick="runFeedback('domestic')"><span>피드백</span></button>
+    </div>
+    <div class="card-body"><div id="res-feedback-domestic" class="placeholder">어제 추천 종목의 결과를 분석합니다.</div></div>
+  </div>
+
+  <!-- 기준 수정 -->
+  <div class="card">
+    <div class="card-head">
+      <div class="card-title">🔧 기준 수정사항 추천</div>
+      <button class="ai-btn" onclick="runAdjust('domestic')"><span>분석</span></button>
+    </div>
+    <div class="card-body"><div id="res-adjust-domestic" class="placeholder">실패 패턴을 분석해 기준 개선을 제안합니다.</div></div>
+  </div>
+
+  <div class="bottom-pad"></div>
+</div>
+
+<!-- 미국주식 패널 -->
+<div id="panel-us" class="panel">
+
+  <div class="card">
+    <div class="card-head">
+      <div class="card-title"><span class="market-dot warn" id="nasdaqDot"></span>금일 나스닥 예상</div>
+      <button class="ai-btn" onclick="runNasdaq()"><span>AI 분석</span></button>
+    </div>
+    <div class="stats-row">
+      <div class="stat-box"><div class="stat-label">시장 상태</div><div class="stat-val" id="nasdaqStatus">—</div></div>
+      <div class="stat-box" style="flex:2"><div class="stat-label">매매 가능 여부</div><div class="stat-val" id="tradeOkUS">분석 전</div></div>
+    </div>
+    <div class="card-body"><div id="res-nasdaq" class="placeholder">AI 분석 버튼을 눌러 오늘 나스닥을 예상해보세요.</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <div class="card-title">📰 주요 뉴스 (24시간)</div>
+      <button class="ai-btn" onclick="runNews('us')"><span>분석</span></button>
+    </div>
+    <div class="card-body"><div id="res-news-us" class="placeholder">미국 주요 뉴스를 분석합니다.</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <div class="card-title">🎯 시초가 매매 대상 추천</div>
+      <button class="ai-btn" onclick="runStocks('us')"><span>종목 분석</span></button>
+    </div>
+    <div class="card-body"><div id="res-stocks-us" class="placeholder">나스닥 시초가 매매 대상 상위 5종목을 추천합니다.</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <div class="card-title">📋 추천 사유 정리</div>
+      <button class="ai-btn" onclick="runReason('us')"><span>분석</span></button>
+    </div>
+    <div class="card-body"><div id="res-reason-us" class="placeholder">각 추천 종목의 수급·모멘텀·기술적 분석을 정리합니다.</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <div class="card-title">📊 성공 / 실패 사유 정리 <span class="badge badge-yellow" style="margin-left:4px">전일 결과</span></div>
+      <button class="ai-btn" onclick="runFeedback('us')"><span>피드백</span></button>
+    </div>
+    <div class="card-body"><div id="res-feedback-us" class="placeholder">어제 추천 종목의 결과를 분석합니다.</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <div class="card-title">🔧 기준 수정사항 추천</div>
+      <button class="ai-btn" onclick="runAdjust('us')"><span>분석</span></button>
+    </div>
+    <div class="card-body"><div id="res-adjust-us" class="placeholder">실패 패턴을 분석해 기준 개선을 제안합니다.</div></div>
+  </div>
+
+  <div class="bottom-pad"></div>
+</div>
+
+<!-- 기준설정 패널 -->
+<div id="panel-criteria" class="panel">
+
+  <!-- API 키 -->
+  <div class="api-wrap">
+    <div style="font-size:12px;color:var(--text2);margin-bottom:10px;font-weight:600">🔑 Claude API 키</div>
+    <div class="api-row">
+      <input class="api-input" type="password" id="apiKeyInput" placeholder="sk-ant-api03-..." />
+      <button class="save-key-btn" onclick="saveKey()">저장</button>
+    </div>
+    <div id="keyOkMsg" style="display:none" class="ok-msg">✅ API 키가 저장되었습니다!</div>
+    <div class="api-note">
+      👉 <a href="https://console.anthropic.com" target="_blank" style="color:var(--accent)">console.anthropic.com</a> 에서 발급<br>
+      키는 이 브라우저에만 저장되며 외부로 전송되지 않습니다.
+    </div>
+  </div>
+
+  <!-- 후보군 기준 -->
+  <div class="card">
+    <div class="card-head"><div class="card-title">후보군 압축 기준</div></div>
+    <div class="card-body">
+      <div class="set-row"><div><div class="set-label">전일 거래대금 최소</div><div class="set-sub">이하 종목 제외</div></div><div class="set-right"><input class="set-input" id="c_tv" value="500"/><span class="set-unit">억</span></div></div>
+      <div class="set-row"><div><div class="set-label">전일 상승률 최소</div></div><div class="set-right"><input class="set-input" id="c_rmin" value="3"/><span class="set-unit">%</span></div></div>
+      <div class="set-row"><div><div class="set-label">전일 상승률 최대</div></div><div class="set-right"><input class="set-input" id="c_rmax" value="20"/><span class="set-unit">%</span></div></div>
+      <div class="set-row"><div><div class="set-label">시가총액 최소</div></div><div class="set-right"><input class="set-input" id="c_mcmin" value="300"/><span class="set-unit">억</span></div></div>
+      <div class="set-row"><div><div class="set-label">시가총액 최대</div></div><div class="set-right"><input class="set-input" id="c_mcmax" value="50000"/><span class="set-unit">억</span></div></div>
+      <div class="set-row"><div><div class="set-label">거래량 (20일 평균 대비)</div></div><div class="set-right"><input class="set-input" id="c_vm" value="2"/><span class="set-unit">배↑</span></div></div>
+    </div>
+  </div>
+
+  <!-- 점수 기준 -->
+  <div class="card">
+    <div class="card-head"><div class="card-title">점수 기준</div></div>
+    <div class="card-body">
+      <div class="set-row"><div><div class="set-label">매수 대상 최소 점수</div></div><div class="set-right"><input class="set-input" id="c_ms" value="70"/><span class="set-unit">점</span></div></div>
+      <div class="set-row"><div><div class="set-label">강력 추천 점수</div></div><div class="set-right"><input class="set-input" id="c_ss" value="80"/><span class="set-unit">점</span></div></div>
+      <div class="set-row"><div><div class="set-label">RSI 최적 범위 최소</div></div><div class="set-right"><input class="set-input" id="c_rsi1" value="50"/></div></div>
+      <div class="set-row"><div><div class="set-label">RSI 최적 범위 최대</div></div><div class="set-right"><input class="set-input" id="c_rsi2" value="70"/></div></div>
+    </div>
+  </div>
+
+  <!-- 매매 금지 필터 -->
+  <div class="card">
+    <div class="card-head"><div class="card-title">매매 금지 필터</div></div>
+    <div class="card-body">
+      <div class="set-row"><div><div class="set-label">나스닥 급락 기준</div><div class="set-sub">이상 하락 시 매매 금지</div></div><div class="set-right"><input class="set-input" id="c_nd" value="2"/><span class="set-unit">%</span></div></div>
+      <div class="set-row"><div><div class="set-label">코스피 예상 하락 시 금지</div></div><div class="toggle on" id="t1" onclick="tog('t1')"></div></div>
+      <div class="set-row"><div><div class="set-label">전쟁 / 금리 쇼크 시 금지</div></div><div class="toggle on" id="t2" onclick="tog('t2')"></div></div>
+      <div class="set-row"><div><div class="set-label">거래대금 감소 시 금지</div></div><div class="toggle on" id="t3" onclick="tog('t3')"></div></div>
+    </div>
+  </div>
+
+  <!-- 매매가 기준 -->
+  <div class="card">
+    <div class="card-head"><div class="card-title">매매가 계산 기준</div></div>
+    <div class="card-body">
+      <div class="set-row"><div><div class="set-label">매수가 갭 배수</div><div class="set-sub">전일 종가 × 배수</div></div><div class="set-right"><input class="set-input" id="c_b1" value="1.01"/><span class="set-unit">배</span></div></div>
+      <div class="set-row"><div><div class="set-label">1차 익절 배수</div><div class="set-sub">매수가 × 배수 (+2.5%)</div></div><div class="set-right"><input class="set-input" id="c_p1" value="1.025"/><span class="set-unit">배</span></div></div>
+      <div class="set-row"><div><div class="set-label">2차 익절 배수</div><div class="set-sub">매수가 × 배수 (+5%)</div></div><div class="set-right"><input class="set-input" id="c_p2" value="1.05"/><span class="set-unit">배</span></div></div>
+      <div class="set-row"><div><div class="set-label">손절가 배수</div><div class="set-sub">매수가 × 배수 (-2%)</div></div><div class="set-right"><input class="set-input" id="c_st" value="0.98"/><span class="set-unit">배</span></div></div>
+    </div>
+  </div>
+
+  <button class="save-btn" onclick="saveCriteria()">💾 기준 저장</button>
+  <div id="critOk" style="display:none;margin-top:12px" class="ok-msg">✅ 기준이 저장되었습니다!</div>
+
+  <div class="bottom-pad"></div>
+</div>
+
+<script>
+// ─── 상태 ─────────────────────────────────────────────────
+let API_KEY = localStorage.getItem('ob_apikey') || '';
+const C = () => ({
+  tv:   val('c_tv'),   rmin: val('c_rmin'), rmax: val('c_rmax'),
+  mcmin:val('c_mcmin'),mcmax:val('c_mcmax'),vm:   val('c_vm'),
+  ms:   val('c_ms'),   ss:   val('c_ss'),   rsi1: val('c_rsi1'), rsi2: val('c_rsi2'),
+  nd:   val('c_nd'),   b1:   val('c_b1'),   p1:   val('c_p1'),
+  p2:   val('c_p2'),   st:   val('c_st'),
+});
+function val(id){ return document.getElementById(id)?.value || ''; }
+
+// 저장된 기준 불러오기
+const saved = localStorage.getItem('ob_criteria');
+if(saved){ try{ const c=JSON.parse(saved); Object.keys(c).forEach(k=>{ const el=document.getElementById('c_'+k); if(el) el.value=c[k]; }); }catch(e){} }
+if(API_KEY){ document.getElementById('apiKeyInput').value=API_KEY; document.getElementById('keyOkMsg').style.display='block'; }
+
+// ─── 탭 전환 ───────────────────────────────────────────────
+function switchTab(name){
+  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',['domestic','us','criteria'][i]===name));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('panel-'+name).classList.add('active');
+}
+
+// ─── 토글 ──────────────────────────────────────────────────
+function tog(id){ document.getElementById(id).classList.toggle('on'); }
+
+// ─── API 키 저장 ────────────────────────────────────────────
+function saveKey(){
+  const k = document.getElementById('apiKeyInput').value.trim();
+  if(!k){ alert('API 키를 입력해주세요.'); return; }
+  API_KEY = k;
+  localStorage.setItem('ob_apikey', k);
+  document.getElementById('keyOkMsg').style.display='block';
+}
+
+// ─── 기준 저장 ──────────────────────────────────────────────
+function saveCriteria(){
+  const c=C(); localStorage.setItem('ob_criteria',JSON.stringify(c));
+  const ok=document.getElementById('critOk');
+  ok.style.display='block'; setTimeout(()=>ok.style.display='none',2500);
+}
+
+// ─── Claude API 호출 ────────────────────────────────────────
+async function claude(prompt, elId){
+  if(!API_KEY){
+    alert('⚠️ 기준설정 탭에서 API 키를 먼저 저장해주세요!');
+    return;
+  }
+  const el = document.getElementById(elId);
+  el.innerHTML = '<div class="loading-msg"><div class="spinner" style="width:14px;height:14px;border:2px solid rgba(96,165,250,0.3);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite"></div>AI가 최신 정보를 검색 중입니다...</div>';
+
+  const c = C();
+  const today = new Date().toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric',weekday:'long'});
+  const system = `당신은 한국 주식 시초가 매매 전문 AI 분석가입니다.
+오늘: ${today}
+기준: 거래대금${c.tv}억↑ / 상승률+${c.rmin}~+${c.rmax}% / 최소점수${c.ms}점 / 강력추천${c.ss}점 / RSI${c.rsi1}~${c.rsi2}
+반드시 웹 검색으로 최신 정보를 확인하고, 한국어로 실전 투자자 관점에서 답변하세요.`;
+
+  try{
+    const res = await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':API_KEY,'anthropic-version':'2023-06-01'},
+      body: JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:1500,
+        system,
+        tools:[{type:'web_search_20250305',name:'web_search'}],
+        messages:[{role:'user',content:prompt}]
+      })
+    });
+    if(!res.ok){ const e=await res.json(); throw new Error(e?.error?.message||`오류 ${res.status}`); }
+    const data = await res.json();
+    const text = data.content.filter(c=>c.type==='text').map(c=>c.text).join('\n').trim();
+    el.className='result';
+    el.textContent = text || '응답이 없습니다.';
+    return text;
+  }catch(e){
+    el.className='result';
+    el.style.color='var(--red)';
+    el.textContent = '오류: ' + e.message;
+  }
+}
+
+// ─── 코스피 분석 ────────────────────────────────────────────
+async function runKospi(){
+  const text = await claude(`웹 검색으로 확인하여 분석해주세요:
+1. 어젯밤 미국 증시(다우/나스닥/S&P500) 마감 결과
+2. 원달러 환율 현황
+3. 코스피 야간선물 동향
+
+아래 형식으로 답변:
+【 코스피 예상 방향 】
+▶ 상승/하락/횡보 + 예상 등락률
+
+【 시초가 매매 가능 여부 】
+✅ 가능 또는 ❌ 불가 — 이유 한 줄
+
+【 근거 3가지 】
+① ② ③
+
+【 주의사항 】`, 'res-kospi');
+
+  if(!text) return;
+  const isOk = text.includes('✅')||text.includes('가능');
+  const isBad = text.includes('❌')||text.includes('불가')||text.includes('금지');
+  const dotCls = isBad?'bad':isOk?'ok':'warn';
+  const statusText = isBad?'매매 금지':isOk?'매매 가능':'주의';
+  document.getElementById('kospiDot').className='market-dot '+dotCls;
+  document.getElementById('mDot').className='market-dot '+dotCls;
+  document.getElementById('mText').textContent=statusText;
+  document.getElementById('kospiStatus').textContent = isBad?'하락 예상':isOk?'상승 예상':'보합';
+  document.getElementById('kospiStatus').className='stat-val '+(isBad?'bad':isOk?'ok':'');
+  document.getElementById('tradeOk').textContent=statusText;
+  document.getElementById('tradeOk').className='stat-val '+(isBad?'bad':isOk?'ok':'');
+}
+
+// ─── 나스닥 분석 ────────────────────────────────────────────
+async function runNasdaq(){
+  const text = await claude(`웹 검색으로 확인하여 분석해주세요:
+1. 어젯밤 나스닥 최종 마감 지수와 등락률
+2. 주요 기술주(엔비디아/애플/마이크로소프트/테슬라) 동향
+3. 프리마켓 선물 동향
+
+아래 형식으로 답변:
+【 나스닥 전일 마감 】
+▶ 지수 및 등락률
+
+【 미국 시초가 매매 가능 여부 】
+✅ 가능 또는 ❌ 불가 — 이유 한 줄
+
+【 근거 3가지 】
+① ② ③
+
+【 주목 섹터 / 주의사항 】`, 'res-nasdaq');
+
+  if(!text) return;
+  const isOk = text.includes('✅')||text.includes('가능');
+  const isBad = text.includes('❌')||text.includes('불가');
+  document.getElementById('nasdaqDot').className='market-dot '+(isBad?'bad':isOk?'ok':'warn');
+  document.getElementById('nasdaqStatus').textContent = isBad?'하락':isOk?'상승':'보합';
+  document.getElementById('nasdaqStatus').className='stat-val '+(isBad?'bad':isOk?'ok':'');
+  document.getElementById('tradeOkUS').textContent = isBad?'매매 금지':isOk?'매매 가능':'주의';
+  document.getElementById('tradeOkUS').className='stat-val '+(isBad?'bad':isOk?'ok':'');
+}
+
+// ─── 뉴스 분석 ──────────────────────────────────────────────
+function runNews(m){
+  const mn = m==='domestic'?'한국/코스피':'미국/나스닥';
+  claude(`웹 검색으로 최근 24시간 ${mn} 주식시장 영향 뉴스를 수집하고:
+
+【 정책/정부 동향 】
+• [긍정/부정/중립] 내용 — 시장 영향
+
+【 세계 정세 】
+• [긍정/부정/중립] 내용 — 시장 영향
+
+【 산업/기업 뉴스 】
+• [긍정/부정/중립] 내용 — 시장 영향
+
+【 오늘 시초가 매매 종합 의견 】`, `res-news-${m}`);
+}
+
+// ─── 종목 추천 ──────────────────────────────────────────────
+function runStocks(m){
+  const c=C(); const mn=m==='domestic'?'코스피/코스닥':'나스닥';
+  claude(`웹 검색으로 ${mn} 오늘 시초가 매매 후보를 찾아 점수화해주세요.
+
+후보 조건: 거래대금${c.tv}억↑ / 상승률+${c.rmin}~+${c.rmax}% / 거래량 ${c.vm}배↑
+
+각 종목 점수:
+① 수급(최대40점): 외국인+기관 순매수
+② 모멘텀(최대30점): 뉴스/테마/정책
+③ 위치(최대20점): 차트 위치
+④ 리스크(-10~0): 갭상승/윗꼬리
+
+총점 ${c.ms}점↑ 상위 5종목을 아래 형식으로:
+---
+【 1위 종목명(코드) 】${parseInt(c.ss)>=80?'⭐ 강력추천':''}
+총점: XX점 (수급XX+모멘텀XX+위치XX-리스크XX)
+전일 종가: XX,XXX원
+매수가: XX,XXX원 (×${c.b1})
+1차 익절: XX,XXX원 (×${c.p1})
+2차 익절: XX,XXX원 (×${c.p2})
+손절가: XX,XXX원 (×${c.st})
+추천 사유: 
+---`, `res-stocks-${m}`);
+}
+
+// ─── 추천 사유 ──────────────────────────────────────────────
+function runReason(m){
+  const mn=m==='domestic'?'코스피/코스닥':'나스닥';
+  claude(`웹 검색으로 오늘 ${mn} 시초가 매매 추천 종목들의 상세 추천 사유를 정리해주세요.
+
+각 종목별:
+- 수급 분석 (외국인/기관 포지션)
+- 모멘텀 분석 (뉴스/테마/정책 연관성)
+- 기술적 분석 (RSI, MACD, 볼린저밴드)
+- 리스크 요인
+
+실전 투자자 관점에서 간결하게 정리해주세요.`, `res-reason-${m}`);
+}
+
+// ─── 피드백 분석 ────────────────────────────────────────────
+function runFeedback(m){
+  const mn=m==='domestic'?'코스피/코스닥':'나스닥';
+  claude(`웹 검색으로 어제 ${mn} 시초가 매매 결과를 분석해주세요.
+
+【 성공 패턴 】
+시초가 대비 상승 마감 종목 유형 + 공통 요인
+
+【 실패 패턴 】
+갭상 후 하락 종목 유형 + 원인
+- 갭상 과열 / 수급 부족 / 테마 소멸 여부
+
+【 내일 매매 전략 】`, `res-feedback-${m}`);
+}
+
+// ─── 기준 수정 추천 ─────────────────────────────────────────
+function runAdjust(m){
+  const c=C(); const mn=m==='domestic'?'코스피/코스닥':'나스닥';
+  claude(`어제 ${mn} 시초가 매매 결과를 분석해 현재 기준의 개선점을 추천해주세요.
+
+현재 기준:
+- 최소 거래대금: ${c.tv}억
+- 상승률: +${c.rmin}~+${c.rmax}%
+- 최소 점수: ${c.ms}점
+- RSI: ${c.rsi1}~${c.rsi2}
+
+개선 필요 항목과 구체적 수치 조정 제안을 주세요.
+예: "RSI 상한 70→65로 낮출 것", "갭상 기준 강화" 등`, `res-adjust-${m}`);
+}
+</script>
+</body>
+</html>
