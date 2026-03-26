@@ -87,6 +87,16 @@ html,body{background:var(--bg);color:var(--text);font-family:-apple-system,Blink
 /* 저장 버튼 */
 .save-btn{background:var(--blue);color:#fff;border:none;border-radius:10px;padding:14px;font-size:15px;font-weight:700;cursor:pointer;width:100%;margin-top:4px}
 .save-btn:hover{background:var(--blue2)}
+/* 프로그레스 바 */
+.progress-wrap{padding:12px 14px;border-bottom:1px solid var(--border);display:none}
+.progress-wrap.show{display:block}
+.progress-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px}
+.progress-label{font-size:11px;color:var(--text3)}
+.progress-pct{font-size:12px;font-weight:700;color:var(--accent)}
+.progress-track{height:6px;background:var(--bg4);border-radius:3px;overflow:hidden}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--blue),var(--accent));border-radius:3px;width:0%;transition:width .4s ease}
+.progress-step{font-size:11px;color:var(--text3);margin-top:6px;min-height:16px}
+.progress-eta{font-size:11px;color:var(--text2);margin-top:3px}
 /* 모바일 하단 여백 */
 .bottom-pad{height:30px}
 </style>
@@ -120,6 +130,7 @@ html,body{background:var(--bg);color:var(--text);font-family:-apple-system,Blink
       <div class="stat-box"><div class="stat-label">시장 상태</div><div class="stat-val" id="kospiStatus">—</div></div>
       <div class="stat-box" style="flex:2"><div class="stat-label">매매 가능 여부</div><div class="stat-val" id="tradeOk">분석 전</div></div>
     </div>
+    <div class="progress-wrap" id="pg-res-kospi"></div>
     <div class="card-body"><div id="res-kospi" class="placeholder">AI 분석 버튼을 눌러 오늘 코스피를 예상해보세요.</div></div>
   </div>
 
@@ -129,6 +140,7 @@ html,body{background:var(--bg);color:var(--text);font-family:-apple-system,Blink
       <div class="card-title">📰 주요 뉴스 (24시간)</div>
       <button class="ai-btn" onclick="runNews('domestic')"><span>분석</span></button>
     </div>
+    <div class="progress-wrap" id="pg-res-news-domestic"></div>
     <div class="card-body"><div id="res-news-domestic" class="placeholder">국내 주요 뉴스를 분석합니다.</div></div>
   </div>
 
@@ -138,6 +150,7 @@ html,body{background:var(--bg);color:var(--text);font-family:-apple-system,Blink
       <div class="card-title">🎯 시초가 매매 대상 추천</div>
       <button class="ai-btn" onclick="runStocks('domestic')"><span>종목 분석</span></button>
     </div>
+    <div class="progress-wrap" id="pg-res-stocks-domestic"></div>
     <div class="card-body"><div id="res-stocks-domestic" class="placeholder">오늘 시초가 매매 대상 상위 5종목을 추천합니다.</div></div>
   </div>
 
@@ -147,6 +160,7 @@ html,body{background:var(--bg);color:var(--text);font-family:-apple-system,Blink
       <div class="card-title">📋 추천 사유 정리</div>
       <button class="ai-btn" onclick="runReason('domestic')"><span>분석</span></button>
     </div>
+    <div class="progress-wrap" id="pg-res-reason-domestic"></div>
     <div class="card-body"><div id="res-reason-domestic" class="placeholder">각 추천 종목의 수급·모멘텀·기술적 분석을 정리합니다.</div></div>
   </div>
 
@@ -156,6 +170,7 @@ html,body{background:var(--bg);color:var(--text);font-family:-apple-system,Blink
       <div class="card-title">📊 성공 / 실패 사유 정리 <span class="badge badge-yellow" style="margin-left:4px">전일 결과</span></div>
       <button class="ai-btn" onclick="runFeedback('domestic')"><span>피드백</span></button>
     </div>
+    <div class="progress-wrap" id="pg-res-feedback-domestic"></div>
     <div class="card-body"><div id="res-feedback-domestic" class="placeholder">어제 추천 종목의 결과를 분석합니다.</div></div>
   </div>
 
@@ -165,6 +180,7 @@ html,body{background:var(--bg);color:var(--text);font-family:-apple-system,Blink
       <div class="card-title">🔧 기준 수정사항 추천</div>
       <button class="ai-btn" onclick="runAdjust('domestic')"><span>분석</span></button>
     </div>
+    <div class="progress-wrap" id="pg-res-adjust-domestic"></div>
     <div class="card-body"><div id="res-adjust-domestic" class="placeholder">실패 패턴을 분석해 기준 개선을 제안합니다.</div></div>
   </div>
 
@@ -183,6 +199,7 @@ html,body{background:var(--bg);color:var(--text);font-family:-apple-system,Blink
       <div class="stat-box"><div class="stat-label">시장 상태</div><div class="stat-val" id="nasdaqStatus">—</div></div>
       <div class="stat-box" style="flex:2"><div class="stat-label">매매 가능 여부</div><div class="stat-val" id="tradeOkUS">분석 전</div></div>
     </div>
+    <div class="progress-wrap" id="pg-res-nasdaq"></div>
     <div class="card-body"><div id="res-nasdaq" class="placeholder">AI 분석 버튼을 눌러 오늘 나스닥을 예상해보세요.</div></div>
   </div>
 
@@ -191,6 +208,7 @@ html,body{background:var(--bg);color:var(--text);font-family:-apple-system,Blink
       <div class="card-title">📰 주요 뉴스 (24시간)</div>
       <button class="ai-btn" onclick="runNews('us')"><span>분석</span></button>
     </div>
+    <div class="progress-wrap" id="pg-res-news-us"></div>
     <div class="card-body"><div id="res-news-us" class="placeholder">미국 주요 뉴스를 분석합니다.</div></div>
   </div>
 
@@ -199,6 +217,7 @@ html,body{background:var(--bg);color:var(--text);font-family:-apple-system,Blink
       <div class="card-title">🎯 시초가 매매 대상 추천</div>
       <button class="ai-btn" onclick="runStocks('us')"><span>종목 분석</span></button>
     </div>
+    <div class="progress-wrap" id="pg-res-stocks-us"></div>
     <div class="card-body"><div id="res-stocks-us" class="placeholder">나스닥 시초가 매매 대상 상위 5종목을 추천합니다.</div></div>
   </div>
 
@@ -207,6 +226,7 @@ html,body{background:var(--bg);color:var(--text);font-family:-apple-system,Blink
       <div class="card-title">📋 추천 사유 정리</div>
       <button class="ai-btn" onclick="runReason('us')"><span>분석</span></button>
     </div>
+    <div class="progress-wrap" id="pg-res-reason-us"></div>
     <div class="card-body"><div id="res-reason-us" class="placeholder">각 추천 종목의 수급·모멘텀·기술적 분석을 정리합니다.</div></div>
   </div>
 
@@ -215,6 +235,7 @@ html,body{background:var(--bg);color:var(--text);font-family:-apple-system,Blink
       <div class="card-title">📊 성공 / 실패 사유 정리 <span class="badge badge-yellow" style="margin-left:4px">전일 결과</span></div>
       <button class="ai-btn" onclick="runFeedback('us')"><span>피드백</span></button>
     </div>
+    <div class="progress-wrap" id="pg-res-feedback-us"></div>
     <div class="card-body"><div id="res-feedback-us" class="placeholder">어제 추천 종목의 결과를 분석합니다.</div></div>
   </div>
 
@@ -223,6 +244,7 @@ html,body{background:var(--bg);color:var(--text);font-family:-apple-system,Blink
       <div class="card-title">🔧 기준 수정사항 추천</div>
       <button class="ai-btn" onclick="runAdjust('us')"><span>분석</span></button>
     </div>
+    <div class="progress-wrap" id="pg-res-adjust-us"></div>
     <div class="card-body"><div id="res-adjust-us" class="placeholder">실패 패턴을 분석해 기준 개선을 제안합니다.</div></div>
   </div>
 
@@ -341,6 +363,82 @@ function saveCriteria(){
   ok.style.display='block'; setTimeout(()=>ok.style.display='none',2500);
 }
 
+// ─── 분석별 예상시간 및 단계 설정 ──────────────────────────
+const ANALYSIS_CONFIG = {
+  'res-kospi':            { sec: 20, steps: ['미국 증시 마감 검색 중...','환율·선물 데이터 확인 중...','코스피 방향 분석 중...','결과 정리 중...'] },
+  'res-nasdaq':           { sec: 20, steps: ['나스닥 마감 지수 검색 중...','기술주 동향 확인 중...','선물 시장 분석 중...','결과 정리 중...'] },
+  'res-news-domestic':    { sec: 25, steps: ['국내 뉴스 검색 중...','정책·정부 동향 분석 중...','산업·기업 뉴스 정리 중...','시장 영향 종합 중...'] },
+  'res-news-us':          { sec: 25, steps: ['미국 뉴스 검색 중...','연준·금리 동향 확인 중...','기업·산업 뉴스 정리 중...','시장 영향 종합 중...'] },
+  'res-stocks-domestic':  { sec: 45, steps: ['전일 급등주 후보 검색 중...','거래대금·상승률 필터링 중...','수급·모멘텀 점수 계산 중...','차트 위치·리스크 분석 중...','매수가·익절가 계산 중...'] },
+  'res-stocks-us':        { sec: 45, steps: ['나스닥 급등 후보 검색 중...','거래량·상승률 필터링 중...','수급·모멘텀 점수 계산 중...','기술적 분석 진행 중...','매수가·익절가 계산 중...'] },
+  'res-reason-domestic':  { sec: 35, steps: ['추천 종목 재확인 중...','수급 데이터 분석 중...','기술적 지표 확인 중...','추천 사유 정리 중...'] },
+  'res-reason-us':        { sec: 35, steps: ['추천 종목 재확인 중...','수급 데이터 분석 중...','기술적 지표 확인 중...','추천 사유 정리 중...'] },
+  'res-feedback-domestic':{ sec: 30, steps: ['전일 종가 데이터 검색 중...','성공 패턴 분석 중...','실패 원인 파악 중...','피드백 정리 중...'] },
+  'res-feedback-us':      { sec: 30, steps: ['전일 종가 데이터 검색 중...','성공 패턴 분석 중...','실패 원인 파악 중...','피드백 정리 중...'] },
+  'res-adjust-domestic':  { sec: 25, steps: ['실패 패턴 데이터 수집 중...','현재 기준 검토 중...','개선 항목 도출 중...','수치 조정안 정리 중...'] },
+  'res-adjust-us':        { sec: 25, steps: ['실패 패턴 데이터 수집 중...','현재 기준 검토 중...','개선 항목 도출 중...','수치 조정안 정리 중...'] },
+};
+
+// ─── 프로그레스 바 제어 ──────────────────────────────────────
+function startProgress(elId){
+  const cfg = ANALYSIS_CONFIG[elId] || { sec:30, steps:['분석 중...','검색 중...','정리 중...'] };
+  const pgEl = document.getElementById('pg-'+elId);
+  if(!pgEl) return null;
+
+  pgEl.className = 'progress-wrap show';
+  pgEl.innerHTML = `
+    <div class="progress-top">
+      <span class="progress-label" id="pgl-${elId}">분석 시작...</span>
+      <span class="progress-pct" id="pgp-${elId}">0%</span>
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="pgf-${elId}"></div></div>
+    <div class="progress-step" id="pgs-${elId}"></div>
+    <div class="progress-eta" id="pge-${elId}">예상 완료까지 약 ${cfg.sec}초</div>
+  `;
+
+  const startTime = Date.now();
+  const totalMs = cfg.sec * 1000;
+  let stepIdx = 0;
+
+  const timer = setInterval(()=>{
+    const elapsed = Date.now() - startTime;
+    const rawPct = Math.min((elapsed / totalMs) * 92, 92); // 최대 92%까지만 (완료 시 100%)
+    const pct = Math.round(rawPct);
+    const remaining = Math.max(0, Math.round((totalMs - elapsed) / 1000));
+
+    // 단계 업데이트
+    const newStepIdx = Math.min(Math.floor(rawPct / (92 / cfg.steps.length)), cfg.steps.length - 1);
+    if(newStepIdx !== stepIdx){ stepIdx = newStepIdx; }
+
+    const fillEl = document.getElementById('pgf-'+elId);
+    const pctEl  = document.getElementById('pgp-'+elId);
+    const stepEl = document.getElementById('pgs-'+elId);
+    const etaEl  = document.getElementById('pge-'+elId);
+
+    if(fillEl) fillEl.style.width = pct+'%';
+    if(pctEl)  pctEl.textContent = pct+'%';
+    if(stepEl) stepEl.textContent = cfg.steps[stepIdx] || '';
+    if(etaEl)  etaEl.textContent = remaining > 0 ? `예상 완료까지 약 ${remaining}초` : '거의 완료됐어요...';
+  }, 300);
+
+  return { timer, elId, cfg };
+}
+
+function endProgress(handle){
+  if(!handle) return;
+  clearInterval(handle.timer);
+  const fillEl = document.getElementById('pgf-'+handle.elId);
+  const pctEl  = document.getElementById('pgp-'+handle.elId);
+  const stepEl = document.getElementById('pgs-'+handle.elId);
+  const etaEl  = document.getElementById('pge-'+handle.elId);
+  const pgEl   = document.getElementById('pg-'+handle.elId);
+  if(fillEl) fillEl.style.width='100%';
+  if(pctEl)  pctEl.textContent='100%';
+  if(stepEl) stepEl.textContent='✅ 분석 완료!';
+  if(etaEl)  etaEl.textContent='';
+  setTimeout(()=>{ if(pgEl) pgEl.className='progress-wrap'; }, 1500);
+}
+
 // ─── Claude API 호출 ────────────────────────────────────────
 async function claude(prompt, elId){
   if(!API_KEY){
@@ -348,7 +446,10 @@ async function claude(prompt, elId){
     return;
   }
   const el = document.getElementById(elId);
-  el.innerHTML = '<div class="loading-msg"><div class="spinner" style="width:14px;height:14px;border:2px solid rgba(96,165,250,0.3);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite"></div>AI가 최신 정보를 검색 중입니다...</div>';
+  el.className='placeholder';
+  el.textContent='';
+
+  const handle = startProgress(elId);
 
   const c = C();
   const today = new Date().toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric',weekday:'long'});
@@ -372,10 +473,12 @@ async function claude(prompt, elId){
     if(!res.ok){ const e=await res.json(); throw new Error(e?.error?.message||`오류 ${res.status}`); }
     const data = await res.json();
     const text = data.content.filter(c=>c.type==='text').map(c=>c.text).join('\n').trim();
+    endProgress(handle);
     el.className='result';
     el.textContent = text || '응답이 없습니다.';
     return text;
   }catch(e){
+    endProgress(handle);
     el.className='result';
     el.style.color='var(--red)';
     el.textContent = '오류: ' + e.message;
