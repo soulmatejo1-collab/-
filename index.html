@@ -459,9 +459,9 @@ async function claude(prompt, elId){
 반드시 웹 검색으로 최신 정보를 확인하고, 한국어로 실전 투자자 관점에서 답변하세요.`;
 
   try{
-    const res = await fetch('https://api.anthropic.com/v1/messages',{
+    const res = await fetch('/api/claude',{
       method:'POST',
-      headers:{'Content-Type':'application/json','x-api-key':API_KEY,'anthropic-version':'2023-06-01'},
+      headers:{'Content-Type':'application/json','x-api-key':API_KEY},
       body: JSON.stringify({
         model:'claude-sonnet-4-20250514',
         max_tokens:1500,
