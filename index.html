@@ -440,7 +440,7 @@ function endProgress(handle){
 }
 
 // ─── Claude API 호출 ────────────────────────────────────────
-async function claude(prompt, elId){
+async function claude(prompt, elId, maxTok=1000){
   if(!API_KEY){
     alert('⚠️ 기준설정 탭에서 API 키를 먼저 저장해주세요!');
     return;
@@ -464,7 +464,7 @@ async function claude(prompt, elId){
       headers:{'Content-Type':'application/json','x-api-key':API_KEY},
       body: JSON.stringify({
         model:'claude-sonnet-4-20250514',
-        max_tokens:1500,
+        max_tokens:maxTok,
         system,
         tools:[{type:'web_search_20250305',name:'web_search'}],
         messages:[{role:'user',content:prompt}]
@@ -567,27 +567,7 @@ function runNews(m){
 // ─── 종목 추천 ──────────────────────────────────────────────
 function runStocks(m){
   const c=C(); const mn=m==='domestic'?'코스피/코스닥':'나스닥';
-  claude(`웹 검색으로 ${mn} 오늘 시초가 매매 후보를 찾아 점수화해주세요.
-
-후보 조건: 거래대금${c.tv}억↑ / 상승률+${c.rmin}~+${c.rmax}% / 거래량 ${c.vm}배↑
-
-각 종목 점수:
-① 수급(최대40점): 외국인+기관 순매수
-② 모멘텀(최대30점): 뉴스/테마/정책
-③ 위치(최대20점): 차트 위치
-④ 리스크(-10~0): 갭상승/윗꼬리
-
-총점 ${c.ms}점↑ 상위 5종목을 아래 형식으로:
----
-【 1위 종목명(코드) 】${parseInt(c.ss)>=80?'⭐ 강력추천':''}
-총점: XX점 (수급XX+모멘텀XX+위치XX-리스크XX)
-전일 종가: XX,XXX원
-매수가: XX,XXX원 (×${c.b1})
-1차 익절: XX,XXX원 (×${c.p1})
-2차 익절: XX,XXX원 (×${c.p2})
-손절가: XX,XXX원 (×${c.st})
-추천 사유: 
----`, `res-stocks-${m}`);
+  claude(`${mn} 시초가 매매 후보 상위 3종목 추천. 조건: 거래대금${c.tv}억↑ 상승률+${c.rmin}~${c.rmax}% 거래량${c.vm}배↑. 각 종목: 종목명(코드)/총점(수급+모멘텀+위치-리스크)/전일종가/매수가(×${c.b1})/1차익절(×${c.p1})/손절(×${c.st})/추천사유 1줄. 웹검색으로 최신정보 확인.`, `res-stocks-${m}`, 800);
 }
 
 // ─── 추천 사유 ──────────────────────────────────────────────
