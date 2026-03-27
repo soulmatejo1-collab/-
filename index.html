@@ -522,9 +522,9 @@ function endProgress(handle){
 function waitOneMinute(market){
   return new Promise(resolve=>{
     const banner=document.getElementById('wait-'+market);
-    if(!banner){ setTimeout(resolve,62000); return; }
+    if(!banner){ setTimeout(resolve,92000); return; }
     banner.className='wait-banner show';
-    let sec=62;
+    let sec=90;
     const tick=setInterval(()=>{
       sec--;
       banner.textContent=`⏳ 토큰 한도 대기중... ${sec}초 후 다음 분석을 시작합니다`;
@@ -534,6 +534,27 @@ function waitOneMinute(market){
 }
 
 // ─── Claude API 호출 ─────────────────────────────────────
+async function callApi(prompt, maxTok, system, retryCount=0){
+  const res=await fetch('/api/claude',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','x-api-key':API_KEY},
+    body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:maxTok,system,tools:[{type:'web_search_20250305',name:'web_search'}],messages:[{role:'user',content:prompt}]})
+  });
+  if(!res.ok){
+    const e=await res.json();
+    const msg=e?.error?.message||'';
+    // overloaded 또는 rate limit 시 자동 재시도 (최대 3번)
+    if((msg.includes('overloaded')||msg.includes('rate limit')||res.status===529||res.status===429) && retryCount<3){
+      const waitSec=60*(retryCount+1);
+      console.log(`재시도 ${retryCount+1}회 - ${waitSec}초 대기`);
+      await new Promise(r=>setTimeout(r,waitSec*1000));
+      return callApi(prompt, maxTok, system, retryCount+1);
+    }
+    throw new Error(msg||`오류 ${res.status}`);
+  }
+  return res.json();
+}
+
 async function claude(prompt, elId, maxTok=800, onDone=null){
   if(!API_KEY){ alert('⚠️ 설정 탭에서 API 키를 먼저 저장해주세요!'); return; }
   const el=document.getElementById(elId);
@@ -543,13 +564,7 @@ async function claude(prompt, elId, maxTok=800, onDone=null){
   const today=new Date().toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric',weekday:'long'});
   const system=`한국 주식 시초가 매매 전문 AI. 오늘:${today}. 기준:거래대금${c.tv}억↑/상승률+${c.rmin}~${c.rmax}%/최소점수${c.ms}점/RSI${c.rsi1}~${c.rsi2}. 웹검색으로 최신정보 확인. 한국어 간결하게.`;
   try{
-    const res=await fetch('/api/claude',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','x-api-key':API_KEY},
-      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:maxTok,system,tools:[{type:'web_search_20250305',name:'web_search'}],messages:[{role:'user',content:prompt}]})
-    });
-    if(!res.ok){ const e=await res.json(); throw new Error(e?.error?.message||`오류 ${res.status}`); }
-    const data=await res.json();
+    const data=await callApi(prompt, maxTok, system);
     const text=data.content.filter(c=>c.type==='text').map(c=>c.text).join('\n').trim();
     endProgress(handle);
     el.className='result';
@@ -601,7 +616,7 @@ async function runFullAnalysis(market){
 
     // 대기 표시 (첫 번째 배치 제외)
     if(b>0){
-      setMasterLog(market, `⏳ ${b+1}번째 배치 준비중... 1분 대기`);
+      setMasterLog(market, `⏳ ${b+1}번째 배치 준비중... 잠시 대기합니다`);
       await waitOneMinute(market);
     }
 
