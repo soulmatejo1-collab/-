@@ -418,52 +418,62 @@ async function getKisToken(){
 async function getStockPrice(ticker){
   const token = await getKisToken();
   const appKey = localStorage.getItem('ob_kis_appkey');
+  const appSecret = localStorage.getItem('ob_kis_appsecret');
   if(!token || !appKey) return null;
   try{
-    const res = await fetch(`/api/kis-price?ticker=${ticker}&token=${encodeURIComponent(token)}&appkey=${encodeURIComponent(appKey)}`);
+    const res = await fetch(`/api/kis-price?ticker=${ticker}&token=${encodeURIComponent(token)}&appkey=${encodeURIComponent(appKey)}&appsecret=${encodeURIComponent(appSecret||'')}`);
     const data = await res.json();
+    if(data.error) console.warn('국내주식 종가 오류:', ticker, data.error);
     return data.price || null;
-  }catch(e){ return null; }
+  }catch(e){ console.error('getStockPrice error:', e); return null; }
 }
 
 // ─── 미국주식 실시간 종가 조회 ──────────────────────────────
 async function getUsStockPrice(ticker){
   const token = await getKisToken();
   const appKey = localStorage.getItem('ob_kis_appkey');
+  const appSecret = localStorage.getItem('ob_kis_appsecret');
   if(!token || !appKey) return null;
   try{
-    const res = await fetch(`/api/kis-price-us?ticker=${ticker}&token=${encodeURIComponent(token)}&appkey=${encodeURIComponent(appKey)}`);
+    const res = await fetch(`/api/kis-price-us?ticker=${ticker}&token=${encodeURIComponent(token)}&appkey=${encodeURIComponent(appKey)}&appsecret=${encodeURIComponent(appSecret||'')}`);
     const data = await res.json();
+    if(data.error) console.warn('미국주식 종가 오류:', ticker, data.error);
     return data.price || null;
-  }catch(e){ return null; }
+  }catch(e){ console.error('getUsStockPrice error:', e); return null; }
 }
 
 // ─── 미국주식 종가 자동 업데이트 ────────────────────────────
 async function enrichWithRealPriceUs(text){
-  // AI 결과에서 티커 추출 (대문자 알파벳 1~5자)
-  const tickers = [...new Set([...text.matchAll(/\(([A-Z]{1,5})\)/g)].map(m=>m[1]))];
-  if(!tickers.length) return text;
+  const tickers = [...new Set([...text.matchAll(/[（(]([A-Z]{1,5})[)）]/g)].map(m=>m[1]))];
+  if(!tickers.length) return text + '\n\n⚠️ 티커를 찾지 못했습니다.';
+
+  const c = localStorage.getItem('ob_criteria') ? JSON.parse(localStorage.getItem('ob_criteria')) : {};
+  const b1=parseFloat(c.b1||'1.01'), p1=parseFloat(c.p1||'1.025'), p2=parseFloat(c.p2||'1.05'), st=parseFloat(c.st||'0.98');
+  const fmt = n => parseFloat(n).toFixed(2);
 
   let enriched = text;
+  let anySuccess = false;
   for(const ticker of tickers.slice(0,5)){
-    const price = await getUsStockPrice(ticker).catch(()=>null);
-    if(!price) continue;
-    const c = localStorage.getItem('ob_criteria') ? JSON.parse(localStorage.getItem('ob_criteria')) : {};
-    const b1  = parseFloat(c.b1  || '1.01');
-    const p1  = parseFloat(c.p1  || '1.025');
-    const p2  = parseFloat(c.p2  || '1.05');
-    const st  = parseFloat(c.st  || '0.98');
-    const buy   = (price * b1).toFixed(2);
-    const prof1 = (buy * p1).toFixed(2);
-    const prof2 = (buy * p2).toFixed(2);
-    const stop  = (buy * st).toFixed(2);
-    enriched = enriched
-      .replace(/전일 종가:.*/g, `전일 종가: $${price} ✅실시간`)
-      .replace(/매수가:.*/g,    `매수가: $${buy} (×${b1})`)
-      .replace(/1차 익절:.*$/mg, `1차 익절: $${prof1} (×${p1})`)
-      .replace(/2차 익절:.*$/mg, `2차 익절: $${prof2} (×${p2})`)
-      .replace(/손절가:.*$/mg,   `손절가: $${stop} (×${st})`);
+    const price = await getUsStockPrice(ticker);
+    if(!price){ enriched = enriched.replace(new RegExp(`\\(${ticker}\\)`), `(${ticker}) ⚠️종가조회실패`); continue; }
+    anySuccess = true;
+    const buy=fmt(price*b1), prof1=fmt(buy*p1), prof2=fmt(buy*p2), stop=fmt(buy*st);
+    const lines = enriched.split('\n');
+    let inBlock = false;
+    enriched = lines.map(line => {
+      if(line.includes(`(${ticker})`)) { inBlock=true; return line; }
+      if(inBlock && line.match(/^(전일 종가|매수가|1차 익절|2차 익절|손절가)/)){
+        if(line.startsWith('전일 종가')) return `전일 종가: $${price} ✅API실시간`;
+        if(line.startsWith('매수가'))    return `매수가: $${buy} (×${b1})`;
+        if(line.startsWith('1차 익절'))  return `1차 익절: $${prof1} (×${p1})`;
+        if(line.startsWith('2차 익절'))  return `2차 익절: $${prof2} (×${p2})`;
+        if(line.startsWith('손절가'))    return `손절가: $${stop} (×${st})`;
+      }
+      if(inBlock && line.startsWith('---')) inBlock=false;
+      return line;
+    }).join('\n');
   }
+  if(!anySuccess) enriched += '\n\n⚠️ 종가 조회 실패. 한투 API 키를 확인해주세요.';
   return enriched;
 }
 
@@ -678,34 +688,37 @@ function runNews(m){
 
 // ─── 종가 자동 업데이트 ─────────────────────────────────────
 async function enrichWithRealPrice(text){
-  // AI 결과에서 종목코드 추출 (6자리 숫자)
-  const codes = [...new Set([...text.matchAll(/\((\d{6})\)/g)].map(m=>m[1]))];
-  if(!codes.length) return text;
+  const codes = [...new Set([...text.matchAll(/[（(](\d{6})[)）]/g)].map(m=>m[1]))];
+  if(!codes.length) return text + '\n\n⚠️ 종목코드를 찾지 못했습니다. AI가 코드를 표기하지 않았을 수 있어요.';
+
+  const c = localStorage.getItem('ob_criteria') ? JSON.parse(localStorage.getItem('ob_criteria')) : {};
+  const b1 = parseFloat(c.b1||'1.01'), p1=parseFloat(c.p1||'1.025'), p2=parseFloat(c.p2||'1.05'), st=parseFloat(c.st||'0.98');
+  const fmt = n => Math.round(n).toLocaleString('ko-KR');
 
   let enriched = text;
+  let anySuccess = false;
   for(const code of codes.slice(0,5)){
-    const data = await getStockPrice(code).catch(()=>null);
-    if(!data) continue;
-    const price = data;
-    if(!price) continue;
-    const c = localStorage.getItem('ob_criteria') ? JSON.parse(localStorage.getItem('ob_criteria')) : {};
-    const b1  = parseFloat(c.b1  || '1.01');
-    const p1  = parseFloat(c.p1  || '1.025');
-    const p2  = parseFloat(c.p2  || '1.05');
-    const st  = parseFloat(c.st  || '0.98');
-    const buy   = Math.round(price * b1);
-    const prof1 = Math.round(buy * p1);
-    const prof2 = Math.round(buy * p2);
-    const stop  = Math.round(buy * st);
-    const fmt = n => n.toLocaleString('ko-KR');
-    // 텍스트에서 해당 종목 가격 줄 교체
-    enriched = enriched
-      .replace(/전일 종가:.*/g, `전일 종가: ${fmt(price)}원 ✅실시간`)
-      .replace(/매수가:.*/g,    `매수가: ${fmt(buy)}원 (×${b1})`)
-      .replace(/1차 익절:.*$/mg, `1차 익절: ${fmt(prof1)}원 (×${p1})`)
-      .replace(/2차 익절:.*$/mg, `2차 익절: ${fmt(prof2)}원 (×${p2})`)
-      .replace(/손절가:.*$/mg,   `손절가: ${fmt(stop)}원 (×${st})`);
+    const price = await getStockPrice(code);
+    if(!price){ enriched = enriched.replace(new RegExp(`\\(${code}\\)`), `(${code}) ⚠️종가조회실패`); continue; }
+    anySuccess = true;
+    const buy=Math.round(price*b1), prof1=Math.round(buy*p1), prof2=Math.round(buy*p2), stop=Math.round(buy*st);
+    // 해당 종목 코드가 포함된 줄 이후의 가격 줄들을 교체
+    const lines = enriched.split('\n');
+    let inBlock = false;
+    enriched = lines.map(line => {
+      if(line.includes(`(${code})`)) { inBlock=true; return line; }
+      if(inBlock && line.match(/^(전일 종가|매수가|1차 익절|2차 익절|손절가)/)){
+        if(line.startsWith('전일 종가')) return `전일 종가: ${fmt(price)}원 ✅API실시간`;
+        if(line.startsWith('매수가'))    return `매수가: ${fmt(buy)}원 (×${b1})`;
+        if(line.startsWith('1차 익절'))  return `1차 익절: ${fmt(prof1)}원 (×${p1})`;
+        if(line.startsWith('2차 익절'))  return `2차 익절: ${fmt(prof2)}원 (×${p2})`;
+        if(line.startsWith('손절가'))    return `손절가: ${fmt(stop)}원 (×${st})`;
+      }
+      if(inBlock && line.startsWith('---')) inBlock=false;
+      return line;
+    }).join('\n');
   }
+  if(!anySuccess) enriched += '\n\n⚠️ 종가 조회에 실패했습니다. 한투 API 키를 확인해주세요.';
   return enriched;
 }
 

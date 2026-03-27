@@ -1,8 +1,9 @@
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  const { ticker, token, appkey } = req.query;
+  const { ticker, token, appkey, appsecret } = req.query;
   if (!ticker || !token || !appkey) {
     return res.status(400).json({ error: 'ticker, token, appkey required' });
   }
@@ -13,18 +14,22 @@ export default async function handler(req, res) {
       headers: {
         'authorization': `Bearer ${token}`,
         'appkey': appkey,
-        'appsecret': '',
+        'appsecret': appsecret || '',
         'tr_id': 'FHKST01010100',
-        'Content-Type': 'application/json',
+        'custtype': 'P',
+        'Content-Type': 'application/json; charset=utf-8',
       },
     });
     const data = await response.json();
-    const price = data?.output?.stck_prpr;  // 현재가
-    const closePrice = data?.output?.stck_clpr || price;  // 전일 종가
+    if (data?.rt_cd !== '0') {
+      return res.status(200).json({ price: null, error: data?.msg1 || '조회실패', raw: data });
+    }
+    const out = data?.output;
+    const closePrice = parseInt(out?.stck_clpr || out?.stck_prpr || 0);
     return res.status(200).json({
-      price: closePrice ? parseInt(closePrice) : null,
-      name: data?.output?.hts_kor_isnm || ticker,
-      raw: data?.output,
+      price: closePrice || null,
+      name: out?.hts_kor_isnm || ticker,
+      change: out?.prdy_ctrt || '0',
     });
   } catch (e) {
     return res.status(500).json({ error: e.message });
