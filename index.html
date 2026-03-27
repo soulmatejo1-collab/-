@@ -426,6 +426,47 @@ async function getStockPrice(ticker){
   }catch(e){ return null; }
 }
 
+// ─── 미국주식 실시간 종가 조회 ──────────────────────────────
+async function getUsStockPrice(ticker){
+  const token = await getKisToken();
+  const appKey = localStorage.getItem('ob_kis_appkey');
+  if(!token || !appKey) return null;
+  try{
+    const res = await fetch(`/api/kis-price-us?ticker=${ticker}&token=${encodeURIComponent(token)}&appkey=${encodeURIComponent(appKey)}`);
+    const data = await res.json();
+    return data.price || null;
+  }catch(e){ return null; }
+}
+
+// ─── 미국주식 종가 자동 업데이트 ────────────────────────────
+async function enrichWithRealPriceUs(text){
+  // AI 결과에서 티커 추출 (대문자 알파벳 1~5자)
+  const tickers = [...new Set([...text.matchAll(/\(([A-Z]{1,5})\)/g)].map(m=>m[1]))];
+  if(!tickers.length) return text;
+
+  let enriched = text;
+  for(const ticker of tickers.slice(0,5)){
+    const price = await getUsStockPrice(ticker).catch(()=>null);
+    if(!price) continue;
+    const c = localStorage.getItem('ob_criteria') ? JSON.parse(localStorage.getItem('ob_criteria')) : {};
+    const b1  = parseFloat(c.b1  || '1.01');
+    const p1  = parseFloat(c.p1  || '1.025');
+    const p2  = parseFloat(c.p2  || '1.05');
+    const st  = parseFloat(c.st  || '0.98');
+    const buy   = (price * b1).toFixed(2);
+    const prof1 = (buy * p1).toFixed(2);
+    const prof2 = (buy * p2).toFixed(2);
+    const stop  = (buy * st).toFixed(2);
+    enriched = enriched
+      .replace(/전일 종가:.*/g, `전일 종가: $${price} ✅실시간`)
+      .replace(/매수가:.*/g,    `매수가: $${buy} (×${b1})`)
+      .replace(/1차 익절:.*$/mg, `1차 익절: $${prof1} (×${p1})`)
+      .replace(/2차 익절:.*$/mg, `2차 익절: $${prof2} (×${p2})`)
+      .replace(/손절가:.*$/mg,   `손절가: $${stop} (×${st})`);
+  }
+  return enriched;
+}
+
 // ─── 기준 저장 ──────────────────────────────────────────────
 function saveCriteria(){
   const c=C(); localStorage.setItem('ob_criteria',JSON.stringify(c));
@@ -671,14 +712,20 @@ async function enrichWithRealPrice(text){
 // ─── 종목 추천 ──────────────────────────────────────────────
 function runStocks(m){
   const c=C(); const mn=m==='domestic'?'코스피/코스닥':'나스닥';
+  const isDomestic = m === 'domestic';
+  const codeGuide = isDomestic
+    ? '반드시 종목코드를 괄호 안에 6자리 숫자로 표기. 예: 삼성전자(005930)'
+    : '반드시 티커를 괄호 안에 대문자로 표기. 예: 엔비디아(NVDA)';
   claude(
-    `${mn} 시초가 매매 후보 상위 3종목 추천. 조건: 거래대금${c.tv}억↑ 상승률+${c.rmin}~${c.rmax}% 거래량${c.vm}배↑. 각 종목: 종목명(코드 예:005930)/총점(수급+모멘텀+위치-리스크)/전일종가/매수가(×${c.b1})/1차익절(×${c.p1})/손절(×${c.st})/추천사유 1줄. 웹검색으로 최신정보 확인. 반드시 종목코드를 괄호 안에 6자리로 표기.`,
+    `${mn} 시초가 매매 후보 상위 3종목 추천. 조건: 거래대금${c.tv}억↑ 상승률+${c.rmin}~${c.rmax}% 거래량${c.vm}배↑. 각 종목: 종목명(코드)/총점(수급+모멘텀+위치-리스크)/전일종가/매수가(×${c.b1})/1차익절(×${c.p1})/손절(×${c.st})/추천사유 1줄. 웹검색으로 최신정보 확인. ${codeGuide}`,
     `res-stocks-${m}`, 800,
     async (text, el) => {
       const kisKey = localStorage.getItem('ob_kis_appkey');
       if(!kisKey){ el.textContent = text; return; }
       el.textContent = '📡 실시간 종가 반영 중...';
-      const enriched = await enrichWithRealPrice(text);
+      const enriched = isDomestic
+        ? await enrichWithRealPrice(text)
+        : await enrichWithRealPriceUs(text);
       el.textContent = enriched;
     }
   );
